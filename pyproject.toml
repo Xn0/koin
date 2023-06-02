@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "koin"
+version = "0.1.0"
+description = "Web app to track your crypto portfolio"
+authors = ["xn0 <set.vse@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+django = "^4.2.1"
+psycopg2-binary = "^2.9.6"
+requests = "^2.31.0"
+django-allauth = "^0.54.0"
+django-debug-toolbar = "^4.1.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
