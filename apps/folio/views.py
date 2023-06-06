@@ -18,39 +18,44 @@ def get_data(ticker: str, period: PERIOD) -> None:
     return
 
 
-def parse_csv(ticker: str, period: PERIOD):
+def parse_csv(ticker: str, period: PERIOD) -> pandas.DataFrame:
     df = pandas.read_csv(f'{ticker}_{period}.csv')
     return df
 
 
-def make_daily_chart(df):
-    fig = go.Figure(data=[go.Candlestick(x=df['timestamp'],
-                                         open=df['open (USD)'],
-                                         high=df['high (USD)'],
-                                         low=df['low (USD)'],
-                                         close=df['close (USD)']),])
+def make_chart(df:pandas.DataFrame, df_entry_v=None) -> str:
+    data = [
+        go.Candlestick(
+            x=df['timestamp'],
+            open=df['open (USD)'],
+            high=df['high (USD)'],
+            low=df['low (USD)'],
+            close=df['close (USD)'])
+    ]
+    if df_entry_v:
+        data.append(
+            go.Scatter(
+                # TODO change later to invest amount in USD
+                x=df['timestamp'],
+                y=df['volume'] / 100,
+            )
+        )
 
-    fig.update_layout(xaxis_rangeslider_visible=False,
-                      margin=dict(l=40, r=40, t=20, b=20),)
+    fig = go.Figure(data)
+    fig.update_xaxes(
+        type='category',
+        visible=False,
+        autorange="reversed",
+    )
+    # chart layout settings
+    fig.update_layout(
+        xaxis_rangeslider_visible=False,
+        margin=dict(l=30, r=10, t=20, b=20),
+        showlegend=False,
+        height=300,
+    )
     return fig.to_html(full_html=False, config={'displayModeBar': False})
 
-def make_weekly_chart(df):
-    fig = go.Figure(data=[go.Candlestick(x=df['timestamp'],
-                                         open=df['open (USD)'],
-                                         high=df['high (USD)'],
-                                         low=df['low (USD)'],
-                                         close=df['close (USD)']),
-                          go.Scatter(
-                                      # TODO change later to invest amount in USD
-                                      x=df['timestamp'],
-                                      y=df['volume'] / 100,)
-                          ])
-    fig.update_xaxes(type='category', visible=False, autorange="reversed")
-
-    fig.update_layout(xaxis_rangeslider_visible=False,
-                      margin=dict(l=40, r=40, t=20, b=20),
-                      showlegend=False)
-    return fig.to_html(full_html=False, config={'displayModeBar': False})
 
 def folio(request):
     # TODO TemplateView
@@ -59,6 +64,6 @@ def folio(request):
 
     df_weekly = parse_csv('BTC', 'WEEKLY')
     df_daily = parse_csv('BTC', 'DAILY')[:30]
-    context = {'chart_daily': make_daily_chart(df_daily),
-               'chart_weekly': make_weekly_chart(df_weekly)}
+    context = {'chart_daily': make_chart(df_daily),
+               'chart_weekly': make_chart(df_weekly, True)}
     return render(request, 'folio.html', context)
