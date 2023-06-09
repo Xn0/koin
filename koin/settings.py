@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 
 from pathlib import Path
 import os
+import logging
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -122,7 +123,7 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-SITE_ID = 1 # TODO what???
+SITE_ID = 1  # TODO what???
 AUTHENTICATION_BACKENDS = [
     # Needed to login by username in Django admin, regardless of `allauth`
     'django.contrib.auth.backends.ModelBackend',
@@ -131,7 +132,7 @@ AUTHENTICATION_BACKENDS = [
     'allauth.account.auth_backends.AuthenticationBackend',
 ]
 
-SOCIALACCOUNT_PROVIDERS = { # TODO
+SOCIALACCOUNT_PROVIDERS = {  # TODO
     "github": {
         # For each provider, you can choose whether or not the
         # email address(es) retrieved from the provider are to be
@@ -179,3 +180,66 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+LOGGING = {
+    "version": 1,  # the dictConfig format version
+    "disable_existing_loggers": False,  # retain the default loggers
+    "handlers": {
+        "file": {
+            "class": "logging.FileHandler",
+            "filename": "general.log",
+            "formatter": "verbose",
+        },
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "simple",
+        },
+    },
+    "loggers": {
+        "": {
+            "level": os.getenv("DJANGO_LOG_LEVEL", "INFO"),
+            "handlers": ["file", "console"],
+        },
+    },
+    "formatters": {
+        "verbose": {
+            "format": "{asctime} {name:25} {levelname:10} {message}",
+            "style": "{",
+            'datefmt': '%Y-%m-%d %H:%M:%S',
+        },
+        "simple": {
+            "format": "{levelname:10} {name:25} > {message}",
+            "style": "{",
+        },
+    },
+}
+
+if os.getenv("DJANGO_SHELL"):
+    LOGGING = {
+        "version": 1,  # the dictConfig format version
+        "disable_existing_loggers": False,  # retain the default loggers
+        "handlers": {
+            "console": {
+                "class": "logging.StreamHandler",
+                "formatter": "simple",
+            },
+        },
+        "loggers": {
+            "": {
+                "level": os.getenv("DJANGO_LOG_LEVEL", "INFO"),
+                "handlers": ["console"],
+            },
+        },
+        "formatters": {
+            "verbose": {
+                "format": "{asctime} {name:25} {levelname:10} {message}",
+                "style": "{",
+                'datefmt': '%Y-%m-%d %H:%M:%S',
+            },
+            "simple": {
+                "format": "{levelname:10} {name:25} > {message}",
+                "style": "{",
+            },
+        },
+    }

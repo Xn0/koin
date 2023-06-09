@@ -64,7 +64,6 @@ class Position(CommonInfo):
 
         # delete Position in no transactions left
         if not transactions:
-            print('No transactions')
             self.delete()
             return None
 
@@ -72,12 +71,13 @@ class Position(CommonInfo):
         self.transactions_list = [{
             'timestamp': t.date.strftime('%Y-%m-%d'),
             'amount': t.amount,
+            'money': t.amount * t.price,
         } for t in transactions]
 
         # Total volume of all transactions
         self.amount = sum(t.amount for t in transactions)
 
-        # Average price
+        # Average buy price
         if self.amount:
             self.price = sum(t.price * t.amount for t in transactions) / self.amount
         else:
@@ -89,28 +89,32 @@ class Position(CommonInfo):
 
         self.save()
 
-    def build_dataframe(self, init_date: datetime.date) -> pandas.DataFrame:
+    def build_dataframe(self) -> pandas.DataFrame:
         df = pandas.DataFrame(self.transactions_list)
         df['timestamp'] = pandas.to_datetime(df['timestamp'])
         df = df.sort_values(by='timestamp')
+        df_first_date = df.min()['timestamp']
 
         # Merge all transactions from the same day in to the one
-        df = df.groupby(['timestamp'])['amount'].sum()
+        df = df.groupby(['timestamp'])[['amount', 'money']].sum()
 
-        # Create data frame with a date range from the initial date to today
-        # and merge with transaction df
-        date_range = pandas.date_range(init_date, datetime.date.today(),
+        # Create data frame with a date range from the earliest transaction date
+        # to today and merge with transaction df
+        date_range = pandas.date_range(df_first_date, datetime.date.today(),
                                        freq='D')
         df_dates = pandas.DataFrame({'timestamp': date_range})
         df_merged = df_dates.merge(df, on='timestamp', how='left')
 
         # Replace NaN values in 'amount' column with 0
         df_merged['amount'] = df_merged['amount'].fillna(0)
+        df_merged['money'] = df_merged['money'].fillna(0)
 
         # Add total amount column and calculate it
         df_merged['total'] = df_merged['amount'].cumsum()
+        df_merged['total_money'] = df_merged['money'].cumsum()
 
         if settings.DEBUG:
+            # TODO remove
             df_merged.to_csv('modelDF.csv', index=False)
 
         return df_merged

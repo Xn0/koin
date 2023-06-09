@@ -1,8 +1,9 @@
 {% extends "base.html" %}
 
 {% block content %}
-    <h1>Hello!</h1>
-
-    {{ chart_daily|safe }}
+    <h1>Current portfolio balance ${{ current_balance|floatformat:"0" }}</h1>
+    {{ chart_daily_delta|safe }}
+    {{ chart_weekly_delta|safe }}
     {{ chart_weekly|safe }}
+
 {% endblock %}
