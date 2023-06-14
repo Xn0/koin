@@ -1,11 +1,18 @@
 import datetime
+import redis
 import logging
+import json
 import pandas
+from typing import Literal
 from django.db import models
 from django.conf import settings
-
 from django.contrib.auth.models import User
 
+PERIOD = Literal['DAILY', 'WEEKLY']
+
+redis_instance = redis.StrictRedis(host=settings.REDIS_HOST,
+                                   port=settings.REDIS_PORT,
+                                   db=1)
 
 class CommonInfo(models.Model):
     owner = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -112,9 +119,60 @@ class Position(CommonInfo):
         # Add total amount column and calculate it
         df_merged['total'] = df_merged['amount'].cumsum()
         df_merged['total_money'] = df_merged['money'].cumsum()
-
-        if settings.DEBUG:
-            # TODO remove
-            df_merged.to_csv('modelDF.csv', index=False)
+        df_merged.set_index('timestamp', inplace=True)
 
         return df_merged
+
+
+    def get_data_redis(self, period: PERIOD) -> pandas.DataFrame:
+        """
+        Get OHLC data from Redis
+        :param period: 'DAILY' or 'WEEKLY'
+        :return: OHLC data frame
+        """
+        data = json.loads(redis_instance.get(f'{self.ticker}_{period}'))
+        df = pandas.DataFrame.from_dict(data, orient='index')
+        df.index.name = 'timestamp'
+
+        # convert columns type
+        df.index = pandas.to_datetime(df.index)
+        df = df.astype(float)
+
+        return df
+
+
+    def build_ohlc_df(self, period: PERIOD) -> pandas.DataFrame:
+        """
+        Build OHLC data frame
+        :param period: 'DAILY' or 'WEEKLY'
+        :return: OHLC data frame
+        """
+        df = self.build_dataframe()
+        ohlc_df = self.get_data_redis(period)
+
+        # merge OHLC data with position data
+        ohlc_df = ohlc_df.join(df, on='timestamp', how='left')
+
+        # multiply OHLC values by total amount of position
+        ohlc_df['open'] *= ohlc_df['total']
+        ohlc_df['high'] *= ohlc_df['total']
+        ohlc_df['low'] *= ohlc_df['total']
+        ohlc_df['close'] *= ohlc_df['total']
+
+        return ohlc_df
+
+
+    def build_ohlc_weekly(self) -> pandas.DataFrame:
+        """
+        Build OHLC data frame for weekly period
+        :return: OHLC data frame
+        """
+        return self.build_ohlc_df('WEEKLY')
+
+
+    def build_ohlc_daily(self) -> pandas.DataFrame:
+        """
+        Build OHLC data frame for daily period
+        :return: OHLC data frame
+        """
+        return self.build_ohlc_df('DAILY')

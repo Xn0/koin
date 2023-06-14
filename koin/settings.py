@@ -32,6 +32,10 @@ ALLOWED_HOSTS = [
 
 ]
 
+INTERNAL_IPS = [
+    "127.0.0.1",
+]
+
 # For Docker TODO check is it needed
 # if DEBUG:
 #     import socket  # only if you haven't already imported this
@@ -105,6 +109,23 @@ DATABASES = {
     }
 }
 
+REDIS_HOST = 'localhost'
+REDIS_PORT = 6379
+
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://127.0.0.1:6379/0",
+        "TIMEOUT": 600,
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        }
+    }
+}
+
+SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+SESSION_CACHE_ALIAS = "default"
+
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
 
@@ -125,7 +146,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 SITE_ID = 1  # TODO what???
 AUTHENTICATION_BACKENDS = [
-    # Needed to login by username in Django admin, regardless of `allauth`
+    # Needed to log in by username in Django admin, regardless of `allauth`
     'django.contrib.auth.backends.ModelBackend',
 
     # `allauth` specific authentication methods, such as login by e-mail
@@ -175,20 +196,21 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'static'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-
 LOGGING = {
     "version": 1,  # the dictConfig format version
     "disable_existing_loggers": False,  # retain the default loggers
     "handlers": {
         "file": {
-            "class": "logging.FileHandler",
+            "class": "logging.handlers.RotatingFileHandler",
             "filename": "general.log",
+            'maxBytes': 10485760,  # 1024 * 1024 * 10B = 10MB
             "formatter": "verbose",
         },
         "console": {
@@ -214,32 +236,33 @@ LOGGING = {
         },
     },
 }
-
-if os.getenv("DJANGO_SHELL"):
-    LOGGING = {
-        "version": 1,  # the dictConfig format version
-        "disable_existing_loggers": False,  # retain the default loggers
-        "handlers": {
-            "console": {
-                "class": "logging.StreamHandler",
-                "formatter": "simple",
-            },
-        },
-        "loggers": {
-            "": {
-                "level": os.getenv("DJANGO_LOG_LEVEL", "INFO"),
-                "handlers": ["console"],
-            },
-        },
-        "formatters": {
-            "verbose": {
-                "format": "{asctime} {name:25} {levelname:10} {message}",
-                "style": "{",
-                'datefmt': '%Y-%m-%d %H:%M:%S',
-            },
-            "simple": {
-                "format": "{levelname:10} {name:25} > {message}",
-                "style": "{",
-            },
-        },
-    }
+#
+# # TODO remove this
+# if os.getenv("DJANGO_SHELL"):
+#     LOGGING = {
+#         "version": 1,  # the dictConfig format version
+#         "disable_existing_loggers": False,  # retain the default loggers
+#         "handlers": {
+#             "console": {
+#                 "class": "logging.StreamHandler",
+#                 "formatter": "simple",
+#             },
+#         },
+#         "loggers": {
+#             "": {
+#                 "level": os.getenv("DJANGO_LOG_LEVEL", "INFO"),
+#                 "handlers": ["console"],
+#             },
+#         },
+#         "formatters": {
+#             "verbose": {
+#                 "format": "{asctime} {name:25} {levelname:10} {message}",
+#                 "style": "{",
+#                 'datefmt': '%Y-%m-%d %H:%M:%S',
+#             },
+#             "simple": {
+#                 "format": "{levelname:10} {name:25} > {message}",
+#                 "style": "{",
+#             },
+#         },
+#     }

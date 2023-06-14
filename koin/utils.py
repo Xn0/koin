@@ -1,73 +1,67 @@
 import pandas
 import logging
 import requests
+import redis
+import json
 from typing import Literal
 import plotly.graph_objects as go
 from django.conf import settings
-from django.contrib.auth.models import User
-from apps.folio.models import Position
 
 PERIOD = Literal['DAILY', 'WEEKLY']
 
+redis_instance = redis.StrictRedis(host=settings.REDIS_HOST,
+                                   port=settings.REDIS_PORT,
+                                   db=1)
+
 logger = logging.getLogger(__name__)
 
-# TODO add cache
+
+# TODO mb rewrite in OOP style
 
 def get_data_alphavantage(ticker: str, period: PERIOD) -> None:
+    apikey = settings.ALPHAVANTAGE_KEY
+    api_response = requests.get(  # TODO change market to USD
+        f'https://www.alphavantage.co/query?function=DIGITAL_CURRENCY_{period}&symbol={ticker}&market=EUR&apikey={apikey}'
+    )
+    data = json.loads(api_response.content)
+    # remove unnecessary data and extra nesting level
+    data.pop('Meta Data')
+    data = data[list(data.keys())[0]]
+    # convert to pandas dataframe and drop unnecessary columns
+    df = pandas.DataFrame.from_dict(data, orient='index')
+    df.drop(
+        columns=[
+        '1a. open (EUR)', '2a. high (EUR)', '3a. low (EUR)',
+        '4a. close (EUR)', '5. volume', '6. market cap (USD)'
+        ],
+        inplace=True,
+        axis=1)
+    # rename columns
+    df.rename(
+        columns={
+            '1b. open (USD)': 'open',
+            '2b. high (USD)': 'high',
+            '3b. low (USD)': 'low',
+            '4b. close (USD)': 'close',
+        },
+        inplace=True
+    )
+
+    redis_instance.set(f'{ticker}_{period}', df.to_json(orient='index'))
+
+
+def fake_usd_df(period: PERIOD) -> None:
     """
-    Get data from AlphaVantage API and save it to csv file
-    TODO save to redis
-
-    TODO mb I should rename all columns and remove unnecessary, /
-    TODO / it can be usefull if I'll use some other extra source of data
-
-    :param ticker:
+    Create dataframe with OHLC data of USD
     :param period: DAILY or WEEKLY
     """
-    apikey = settings.ALPHAVANTAGE_KEY
-    api_response = requests.get(
-        f'https://www.alphavantage.co/query?function=DIGITAL_CURRENCY_{period}&symbol={ticker}&market=USD&apikey={apikey}&datatype=csv'
-    )
-    with open(f'{ticker}_{period}.csv', 'wb') as the_file:
-        the_file.write(api_response.content)
-
-
-def ticker_chart_df(
-        ticker: str,
-        user: User,
-        period: PERIOD
-) -> pandas.DataFrame:
-    """
-    Build dataframe with OHLC data of position value by days
-    for given ticker and user
-
-    :param ticker: ticker
-    :param user: user
-    :param period: WEEKLY or DAILY
-    :return: dataframe with OHLC data of position value by days/weeks
-    """
-
-    df_pos = Position.objects.get(ticker=ticker, owner=user).build_dataframe()
-    # hack to make ohlc data for USD
-    if ticker == 'USD':
-        df_ohlc = pandas.read_csv(f'BTC_{period}.csv')
-        df_ohlc['open (USD)'] = 1
-        df_ohlc['high (USD)'] = 1
-        df_ohlc['low (USD)'] = 1
-        df_ohlc['close (USD)'] = 1
-    else:
-        df_ohlc = pandas.read_csv(f'{ticker}_{period}.csv') # TODO get data from redis
-
-    df_ohlc['timestamp'] = pandas.to_datetime(df_ohlc['timestamp'])
-    df_ohlc = df_ohlc.merge(df_pos, on='timestamp', how='left')
-
-    # multiply OHLC prices by total amount of position
-    df_ohlc['open (USD)'] *= df_ohlc['total']
-    df_ohlc['high (USD)'] *= df_ohlc['total']
-    df_ohlc['low (USD)'] *= df_ohlc['total']
-    df_ohlc['close (USD)'] *= df_ohlc['total']
-
-    return df_ohlc
+    data = json.loads(redis_instance.get(f'BTC_{period}'))
+    df = pandas.DataFrame.from_dict(data, orient='index')
+    df['open'] = 1
+    df['high'] = 1
+    df['low'] = 1
+    df['close'] = 1
+    redis_instance.set(f'USD_{period}', df.to_json(orient='index'))
 
 
 def merge_chart_df(df_list: list) -> pandas.DataFrame:
@@ -80,10 +74,10 @@ def merge_chart_df(df_list: list) -> pandas.DataFrame:
     final_df = df_list[0]
 
     for df in df_list[1:]:
-        final_df['open (USD)'] += df['open (USD)']
-        final_df['high (USD)'] += df['high (USD)']
-        final_df['low (USD)'] += df['low (USD)']
-        final_df['close (USD)'] += df['close (USD)']
+        final_df['open'] += df['open']
+        final_df['high'] += df['high']
+        final_df['low'] += df['low']
+        final_df['close'] += df['close']
         final_df['total_money'] += df['total_money']
     return final_df
 
@@ -99,20 +93,20 @@ def make_chart(df: pandas.DataFrame, show_investments=False) -> str:
     """
 
     # remove all empty rows
-    df = df.drop(df[df['open (USD)'].isnull()].index)
+    df = df.drop(df[df['open'].isnull()].index)
 
     data = [
         go.Candlestick(
-            x=df['timestamp'],
-            open=df['open (USD)'],
-            high=df['high (USD)'],
-            low=df['low (USD)'],
-            close=df['close (USD)'])
+            x=df.index,
+            open=df['open'],
+            high=df['high'],
+            low=df['low'],
+            close=df['close'])
     ]
     if show_investments:
         data.append(
             go.Scatter(
-                x=df['timestamp'],
+                x=df.index,
                 y=df['total_money'],
             )
         )
