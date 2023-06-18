@@ -24,7 +24,8 @@ class ChartManager(models.Manager):
         """
         Get OHLC data from cache or database
         """
-        key = f'chart_{self.model}_{ticker}'
+        key = f'Chart_{datetime.date.today().strftime("%Y-%m-%d")}_' \
+              f'{self.model.__name__}_{ticker}'
         df = cache.get(key)
         if df is None:
             df = self._build_ohlc_df(ticker)

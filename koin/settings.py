@@ -121,7 +121,7 @@ CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
         "LOCATION": "redis://127.0.0.1:6379/0",
-        "TIMEOUT": 600,
+        "TIMEOUT": 86400, # 60 * 60 * 24 = 86400
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
         }
