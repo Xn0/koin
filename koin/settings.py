@@ -13,6 +13,9 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 from pathlib import Path
 import os
 import logging
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -61,6 +64,7 @@ INSTALLED_APPS = [
     'allauth.socialaccount',
     'allauth.socialaccount.providers.apple',
     'allauth.socialaccount.providers.google',
+    'bootstrap5',
 ]
 
 MIDDLEWARE = [
@@ -98,17 +102,18 @@ WSGI_APPLICATION = 'koin.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'koinDB',
-        'USER': 'koin_db',
-        'PASSWORD': 'koinpass',
-        'HOST': '127.0.0.1',
-        'PORT': '5432',
+        'NAME': os.environ.get('DB_NAME'),
+        'USER': os.environ.get('DB_USER'),
+        'PASSWORD': os.environ.get('DB_PASSWORD'),
+        'HOST': os.environ.get('DB_HOST'),
+        'PORT': os.environ.get('DB_PORT'),
         'TEST': {
             'NAME': 'koin_test_db'
         }
     }
 }
 
+# TODO add auth
 REDIS_HOST = 'localhost'
 REDIS_PORT = 6379
 
@@ -236,33 +241,33 @@ LOGGING = {
         },
     },
 }
-#
-# # TODO remove this
-# if os.getenv("DJANGO_SHELL"):
-#     LOGGING = {
-#         "version": 1,  # the dictConfig format version
-#         "disable_existing_loggers": False,  # retain the default loggers
-#         "handlers": {
-#             "console": {
-#                 "class": "logging.StreamHandler",
-#                 "formatter": "simple",
-#             },
-#         },
-#         "loggers": {
-#             "": {
-#                 "level": os.getenv("DJANGO_LOG_LEVEL", "INFO"),
-#                 "handlers": ["console"],
-#             },
-#         },
-#         "formatters": {
-#             "verbose": {
-#                 "format": "{asctime} {name:25} {levelname:10} {message}",
-#                 "style": "{",
-#                 'datefmt': '%Y-%m-%d %H:%M:%S',
-#             },
-#             "simple": {
-#                 "format": "{levelname:10} {name:25} > {message}",
-#                 "style": "{",
-#             },
-#         },
-#     }
+
+# TODO remove this
+if os.getenv("DJANGO_SHELL"):
+    LOGGING = {
+        "version": 1,  # the dictConfig format version
+        "disable_existing_loggers": False,  # retain the default loggers
+        "handlers": {
+            "console": {
+                "class": "logging.StreamHandler",
+                "formatter": "simple",
+            },
+        },
+        "loggers": {
+            "": {
+                "level": os.getenv("DJANGO_LOG_LEVEL", "INFO"),
+                "handlers": ["console"],
+            },
+        },
+        "formatters": {
+            "verbose": {
+                "format": "{asctime} {name:25} {levelname:10} {message}",
+                "style": "{",
+                'datefmt': '%Y-%m-%d %H:%M:%S',
+            },
+            "simple": {
+                "format": "{levelname:10} {name:25} > {message}",
+                "style": "{",
+            },
+        },
+    }

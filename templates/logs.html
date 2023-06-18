@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block head %}
+    <style>
+        body {background-color: black;}
+        p {margin: 0;}
+    </style>
+{% endblock %}
+
+{% block content %}
+
+    {% for line in logs %}
+        {% if "WARNING" in line %}
+            <p class="text-warning">{{ line }}</p>
+        {% elif "ERROR" in line %}
+            <p class="text-danger">{{ line }}</p>
+        {% elif "CRITICAL" in line %}
+            <p class="text-danger">{{ line }}</p>
+        {% elif "INFO" in line %}
+            <p class="text-info">{{ line }}</p>
+        {% else %}
+            <p class="text-success">{{ line }}</p>
+        {% endif %}
+    {% endfor %}
+
+{% endblock %}
