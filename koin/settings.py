@@ -128,6 +128,12 @@ CACHES = {
     }
 }
 
+TEST_CACHES = {
+     'default': {
+         'BACKEND': 'django.core.cache.backends.dummy.DummyCache',
+     }
+ }
+
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"
 SESSION_CACHE_ALIAS = "default"
 
@@ -243,7 +249,7 @@ LOGGING = {
 }
 
 # TODO remove this
-if os.getenv("DJANGO_SHELL"):
+if os.getenv("DJANGO_SHELL") or os.getenv("TEST"):
     LOGGING = {
         "version": 1,  # the dictConfig format version
         "disable_existing_loggers": False,  # retain the default loggers
